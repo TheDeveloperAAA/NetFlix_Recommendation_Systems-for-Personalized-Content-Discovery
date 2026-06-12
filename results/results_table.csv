@@ -1,0 +1,4 @@
+Model,Test RMSE,MAP@10
+Weighted Mean,0.9661,0.7784
+Matrix Factorization,0.8146,0.8497
+Item-based kNN,0.8334,0.8488
