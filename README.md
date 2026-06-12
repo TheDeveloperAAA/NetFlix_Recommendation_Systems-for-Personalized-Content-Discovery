@@ -1,4 +1,4 @@
-# Netflix Recommendation System for Personalized Content Discovery
+# Netflix Recommendation System for Personalised Content Discovery
 
 > **Open Projects 2026 · AI/ML Track**
 > A movie recommendation engine built on the **Netflix Prize dataset** (100M+ ratings) that learns user preferences, generates personalized Top‑K recommendations, and **explains every suggestion** — evaluated on both rating accuracy (RMSE) and ranking quality (MAP@10).
@@ -36,7 +36,7 @@ netflix-recommender/
 │   └── recommendation.py          ← 4. RECOMMENDATION GENERATION MODULE
 │
 ├── notebooks/
-│   └── netflix_recommender.ipynb  ← canonical executed run (real outputs embedded)
+│   └── recommendation-system.ipynb   ← canonical executed run (real outputs embedded)
 │
 ├── results/
 │   ├── results_table.csv          ← final RMSE / MAP@10 numbers
@@ -69,7 +69,7 @@ netflix-recommender/
 
 1. Create a new **Kaggle Notebook**.
 2. **Add Input** → search **"Netflix Prize data"** (by `netflix-inc`) → attach it.
-3. Open `notebooks/netflix_recommender.ipynb`, **verify the data path** in the config cell matches where Kaggle mounted the data (check the left file browser — the mount path can be nested), then **Run All**.
+3. Open `notebooks/recommendation-system.ipynb `, **verify the data path** in the config cell matches where Kaggle mounted the data (check the left file browser — the mount path can be nested), then **Run All**.
 
 The notebook already contains the executed outputs from the real run, so you can also just read it top‑to‑bottom.
 
