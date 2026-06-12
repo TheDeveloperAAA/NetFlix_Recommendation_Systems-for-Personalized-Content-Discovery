@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reel — Recommendation Explorer</title>
+<style>
+  /* ----------------------------------------------------------------------
+     Design tokens
+     Subject: a recommendation engine for a film-streaming catalogue.
+     Direction: the warm glow of a projector in a dark room — cinema, not
+     corporate streaming-brand red. Amber marquee light on deep charcoal.
+     ---------------------------------------------------------------------- */
+  :root {
+    --ink:        #0d0d10;   /* near-black canvas        */
+    --ink-2:      #16161c;   /* raised surface           */
+    --ink-3:      #1f1f28;   /* card surface             */
+    --line:       #2c2c38;   /* hairline borders         */
+    --amber:      #e8b04b;   /* projector gold (accent)  */
+    --amber-soft: #f2cd86;   /* lighter gold             */
+    --paper:      #ece7da;   /* warm off-white text      */
+    --paper-dim:  #9a958a;   /* muted text               */
+    --good:       #6fae8e;   /* positive / relevant      */
+    --radius:     14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { -webkit-font-smoothing: antialiased; }
+
+  body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(232,176,75,0.10), transparent 60%),
+      var(--ink);
+    color: var(--paper);
+    font-family: "Iowan Old Style", "Palatino Linotype", "URW Palladio L", Georgia, serif;
+    line-height: 1.55;
+    min-height: 100vh;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px 80px; }
+
+  /* ---- Masthead ---- */
+  header.mast {
+    padding: 46px 0 30px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 34px;
+  }
+  .brand {
+    display: flex; align-items: baseline; gap: 14px;
+  }
+  .brand .mark {
+    font-family: "Bahnschrift", "DIN Alternate", "Helvetica Neue", sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-size: 38px;
+    color: var(--paper);
+  }
+  .brand .mark b { color: var(--amber); }
+  .brand .tag {
+    font-family: "Bahnschrift", "Helvetica Neue", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.32em;
+    font-size: 11px;
+    color: var(--paper-dim);
+  }
+  .lede {
+    margin-top: 16px;
+    max-width: 60ch;
+    color: var(--paper-dim);
+    font-size: 17px;
+  }
+  .lede em { color: var(--amber-soft); font-style: italic; }
+
+  /* ---- Model scoreboard ---- */
+  .scoreboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+    margin: 28px 0 8px;
+  }
+  .score {
+    background: var(--ink-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .score h4 {
+    font-family: "Bahnschrift", "Helvetica Neue", sans-serif;
+    font-weight: 600; font-size: 13px; letter-spacing: 0.04em;
+    color: var(--paper); margin-bottom: 12px;
+  }
+  .score .metric { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 0; }
+  .score .metric span:first-child {
+    font-family: "Bahnschrift", "Helvetica Neue", sans-serif;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--paper-dim);
+  }
+  .score .metric span:last-child {
+    font-variant-numeric: tabular-nums; font-size: 19px; color: var(--amber);
+  }
+  .score.best { border-color: var(--amber); box-shadow: 0 0 0 1px rgba(232,176,75,0.25); }
+  .score.best h4::after { content: " ★ best"; color: var(--amber); font-size: 11px; }
+
+  /* ---- Controls ---- */
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 16px;
+    margin: 38px 0 26px;
+    padding: 18px 20px;
+    background: var(--ink-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+  .controls label {
+    font-family: "Bahnschrift", "Helvetica Neue", sans-serif;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--paper-dim);
+  }
+  select {
+    background: var(--ink-3); color: var(--paper);
+    border: 1px solid var(--line); border-radius: 9px;
+    padding: 10px 14px; font-size: 15px; font-family: inherit;
+    min-width: 220px; cursor: pointer;
+  }
+  select:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+  .controls .hint { color: var(--paper-dim); font-size: 13px; margin-left: auto; }
+
+  /* ---- Two-column body ---- */
+  .panels { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 26px; }
+  @media (max-width: 860px) { .panels { grid-template-columns: 1fr; } }
+
+  .panel h3 {
+    font-family: "Bahnschrift", "Helvetica Neue", sans-serif;
+    font-size: 13px; text-transform: uppercase; letter-spacing: 0.18em;
+    color: var(--paper-dim); margin-bottom: 16px; font-weight: 600;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .panel h3::before {
+    content: ""; width: 22px; height: 1px; background: var(--amber);
+  }
+
+  /* history list */
+  .hist-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 16px; background: var(--ink-2);
+    border: 1px solid var(--line); border-radius: 10px; margin-bottom: 8px;
+  }
+  .hist-item .t { font-size: 15px; }
+  .stars { color: var(--amber); letter-spacing: 2px; font-size: 13px; white-space: nowrap; }
+  .stars .empty { color: var(--line); }
+
+  /* recommendation cards — the signature element */
+  .rec {
+    background: linear-gradient(180deg, var(--ink-3), var(--ink-2));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px 20px; margin-bottom: 14px;
+    position: relative; overflow: hidden;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+  }
+  .rec::before {
+    /* the marquee light strip */
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: linear-gradient(var(--amber), var(--amber-soft));
+  }
+  .rec:hover { border-color: rgba(232,176,75,0.5); transform: translateX(2px); }
+  .rec .top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .rec .title { font-size: 19px; color: var(--paper); }
+  .rec .pred {
+    font-family: "Bahnschrift", "Helvetica Neue", sans-serif;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+    font-size: 13px; color: var(--ink);
+    background: var(--amber); padding: 4px 10px; border-radius: 20px; font-weight: 600;
+  }
+  .rec .why {
+    margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line);
+    font-size: 14px; color: var(--paper-dim);
+  }
+  .rec .why .lab {
+    font-family: "Bahnschrift", "Helvetica Neue", sans-serif;
+    text-transform: uppercase; letter-spacing: 0.12em; font-size: 10px;
+    color: var(--good); display: block; margin-bottom: 6px;
+  }
+  .rec .why .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .rec .why .chip {
+    background: var(--ink); border: 1px solid var(--line);
+    border-radius: 7px; padding: 4px 10px; font-size: 13px; color: var(--paper);
+  }
+
+  footer.foot {
+    margin-top: 56px; padding-top: 22px; border-top: 1px solid var(--line);
+    color: var(--paper-dim); font-size: 13px;
+  }
+  footer.foot code {
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+    background: var(--ink-2); padding: 2px 7px; border-radius: 5px;
+    color: var(--amber-soft); font-size: 12px;
+  }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: var(--paper-dim);
+    border: 1px dashed var(--line); border-radius: var(--radius);
+  }
+  .empty-state b { color: var(--paper); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="mast">
+    <div class="brand">
+      <span class="mark">Re<b>e</b>l</span>
+      <span class="tag">Recommendation Explorer</span>
+    </div>
+    <p class="lede">
+      Every suggestion below carries its reasoning. The ranking comes from a
+      matrix-factorization model; the <em>“because you watched”</em> explanation
+      comes from item-to-item similarity — so you can see not just <em>what</em>
+      is recommended, but <em>why</em>.
+    </p>
+
+    <div class="scoreboard" id="scoreboard"><!-- model cards injected --></div>
+  </header>
+
+  <div class="controls">
+    <label for="userSelect">Viewer profile</label>
+    <select id="userSelect"></select>
+    <span class="hint" id="catalogHint"></span>
+  </div>
+
+  <div id="main"></div>
+
+  <footer class="foot">
+    Data generated by <code>netflix_recsys_pipeline.py</code> →
+    <code>dashboard_data.json</code>. Open this file alongside that JSON, or use
+    the built-in sample. Rankings: Matrix Factorization · Explanations: Item-kNN
+    · Relevance threshold for MAP@10: rating ≥ 3.5.
+  </footer>
+</div>
+
+<script>
+/* ----------------------------------------------------------------------------
+   Data loading.
+   The notebook writes outputs/dashboard_data.json. We try to fetch it; if that
+   fails (e.g. opened via file:// with no JSON next to it, or browser CORS on
+   local files), we fall back to a small embedded sample so the dashboard always
+   renders. To use YOUR real results: place dashboard_data.json beside this file
+   and serve the folder (e.g. `python -m http.server`) or paste your JSON into
+   the EMBEDDED_SAMPLE below.
+---------------------------------------------------------------------------- */
+
+const EMBEDDED_SAMPLE = {
+  "stats": {
+    "n_users": 1681, "n_movies": 350, "n_ratings": 292369,
+    "models": [
+      {"Model": "Baseline Bias",        "Test RMSE": 0.9123, "MAP@10": 0.682},
+      {"Model": "Matrix Factorization", "Test RMSE": 0.8631, "MAP@10": 0.741},
+      {"Model": "Item-based kNN",       "Test RMSE": 0.9087, "MAP@10": 0.715}
+    ]
+  },
+  "users": [
+    {
+      "id": 101,
+      "history": [
+        {"title": "The Shawshank Redemption", "rating": 5},
+        {"title": "Pulp Fiction", "rating": 5},
+        {"title": "The Usual Suspects", "rating": 4},
+        {"title": "Se7en", "rating": 5},
+        {"title": "Fargo", "rating": 4}
+      ],
+      "recommendations": [
+        {"movie": "Goodfellas", "predicted_rating": 4.7, "because_you_liked": ["Pulp Fiction", "Se7en"]},
+        {"movie": "Memento", "predicted_rating": 4.6, "because_you_liked": ["The Usual Suspects", "Se7en"]},
+        {"movie": "No Country for Old Men", "predicted_rating": 4.5, "because_you_liked": ["Fargo", "Se7en"]},
+        {"movie": "Reservoir Dogs", "predicted_rating": 4.5, "because_you_liked": ["Pulp Fiction"]},
+        {"movie": "The Departed", "predicted_rating": 4.4, "because_you_liked": ["Goodfellas", "The Usual Suspects"]}
+      ]
+    },
+    {
+      "id": 102,
+      "history": [
+        {"title": "Toy Story", "rating": 5},
+        {"title": "Finding Nemo", "rating": 5},
+        {"title": "Shrek", "rating": 4},
+        {"title": "Monsters, Inc.", "rating": 5},
+        {"title": "The Incredibles", "rating": 4}
+      ],
+      "recommendations": [
+        {"movie": "Up", "predicted_rating": 4.8, "because_you_liked": ["Finding Nemo", "Monsters, Inc."]},
+        {"movie": "WALL·E", "predicted_rating": 4.7, "because_you_liked": ["The Incredibles", "Finding Nemo"]},
+        {"movie": "Ratatouille", "predicted_rating": 4.5, "because_you_liked": ["Monsters, Inc."]},
+        {"movie": "How to Train Your Dragon", "predicted_rating": 4.4, "because_you_liked": ["Shrek", "The Incredibles"]},
+        {"movie": "Kung Fu Panda", "predicted_rating": 4.2, "because_you_liked": ["Shrek"]}
+      ]
+    },
+    {
+      "id": 103,
+      "history": [
+        {"title": "The Notebook", "rating": 5},
+        {"title": "Pride & Prejudice", "rating": 5},
+        {"title": "Love Actually", "rating": 4},
+        {"title": "Notting Hill", "rating": 4}
+      ],
+      "recommendations": [
+        {"movie": "Sense and Sensibility", "predicted_rating": 4.6, "because_you_liked": ["Pride & Prejudice"]},
+        {"movie": "Atonement", "predicted_rating": 4.4, "because_you_liked": ["The Notebook", "Pride & Prejudice"]},
+        {"movie": "About Time", "predicted_rating": 4.3, "because_you_liked": ["Love Actually", "Notting Hill"]},
+        {"movie": "Four Weddings and a Funeral", "predicted_rating": 4.2, "because_you_liked": ["Notting Hill", "Love Actually"]},
+        {"movie": "The Holiday", "predicted_rating": 4.1, "because_you_liked": ["Love Actually"]}
+      ]
+    }
+  ]
+};
+
+function starbar(rating) {
+  const full = Math.round(rating);
+  let s = "";
+  for (let k = 1; k <= 5; k++) {
+    s += (k <= full) ? "★" : "<span class='empty'>★</span>";
+  }
+  return s;
+}
+
+function renderScoreboard(stats) {
+  const board = document.getElementById("scoreboard");
+  const models = stats.models || [];
+  // best = lowest RMSE
+  let bestIdx = 0, bestRmse = Infinity;
+  models.forEach((m, idx) => {
+    const r = m["Test RMSE"];
+    if (r < bestRmse) { bestRmse = r; bestIdx = idx; }
+  });
+  board.innerHTML = models.map((m, idx) => `
+    <div class="score ${idx === bestIdx ? "best" : ""}">
+      <h4>${m.Model}</h4>
+      <div class="metric"><span>RMSE</span><span>${Number(m["Test RMSE"]).toFixed(4)}</span></div>
+      <div class="metric"><span>MAP@10</span><span>${Number(m["MAP@10"]).toFixed(4)}</span></div>
+    </div>
+  `).join("");
+}
+
+function renderUserOptions(users) {
+  const sel = document.getElementById("userSelect");
+  sel.innerHTML = users.map(u =>
+    `<option value="${u.id}">Viewer #${u.id} — ${u.history.length} ratings on record</option>`
+  ).join("");
+}
+
+function renderUser(user) {
+  const main = document.getElementById("main");
+  if (!user) {
+    main.innerHTML = `<div class="empty-state"><b>No viewer selected.</b></div>`;
+    return;
+  }
+  const histHTML = user.history.map(h => `
+    <div class="hist-item">
+      <span class="t">${h.title}</span>
+      <span class="stars">${starbar(h.rating)}</span>
+    </div>
+  `).join("");
+
+  const recHTML = user.recommendations.map(r => {
+    const reasons = (r.because_you_liked && r.because_you_liked.length)
+      ? r.because_you_liked.map(t => `<span class="chip">${t}</span>`).join("")
+      : `<span class="chip">general popularity</span>`;
+    return `
+      <div class="rec">
+        <div class="top">
+          <span class="title">${r.movie}</span>
+          <span class="pred">predicted ${Number(r.predicted_rating).toFixed(1)} ★</span>
+        </div>
+        <div class="why">
+          <span class="lab">Because you liked</span>
+          <div class="chips">${reasons}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  main.innerHTML = `
+    <div class="panels">
+      <div class="panel">
+        <h3>Their taste so far</h3>
+        ${histHTML}
+      </div>
+      <div class="panel">
+        <h3>Recommended for them</h3>
+        ${recHTML}
+      </div>
+    </div>
+  `;
+}
+
+function boot(data) {
+  const users = data.users || [];
+  document.getElementById("catalogHint").textContent =
+    `${data.stats.n_users.toLocaleString()} viewers · ` +
+    `${data.stats.n_movies.toLocaleString()} films · ` +
+    `${data.stats.n_ratings.toLocaleString()} ratings`;
+  renderScoreboard(data.stats);
+  renderUserOptions(users);
+  const sel = document.getElementById("userSelect");
+  const byId = Object.fromEntries(users.map(u => [String(u.id), u]));
+  sel.addEventListener("change", () => renderUser(byId[sel.value]));
+  renderUser(users[0]);
+}
+
+// Try real JSON first, fall back to embedded sample.
+fetch("dashboard_data.json")
+  .then(r => { if (!r.ok) throw new Error("not found"); return r.json(); })
+  .then(data => boot(data))
+  .catch(() => {
+    console.info("Using embedded sample (dashboard_data.json not reachable).");
+    boot(EMBEDDED_SAMPLE);
+  });
+</script>
+</body>
+</html>
